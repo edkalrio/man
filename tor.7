@@ -1,0 +1,145 @@
+.TH "tor" "7" "2018-07-12" "v.1.0" "Onion Service"
+.hy
+.SH NOMBRE
+.PP
+\f[B]Tor Onion Service\f[] \[em] Los onion services de \f[B]Tor\f[]
+permiten distribuir cualquier servicio sobre TCP sin revelar la
+dirección IP de origen, de forma totalmente anónima.
+.SH DESCRIPCIÓN
+.SS Configuración Previa
+.PP
+Para desplegar un onion service (anteriormente conocido como hidden
+service) sobre un servidor web Nginx vamos a añadir los repositorios
+oficiales del proyecto \f[B]Tor\f[] para evitar usar las versiones
+antiguas proporcionadas por las distros, potencialmente vulnerables a
+ataques ya parcheados en versiones modernas.
+editamos la lista de orígenes del software
+.IP
+.nf
+\f[C]
+sudo\ $EDITOR\ /etc/apt/sources.list
+\f[]
+.fi
+.PP
+a la que añadiremos las líneas, sustituyendo $\f[B]DISTRO\f[] por la
+respectiva versión del sistema operativo
+.IP
+.nf
+\f[C]
+deb\ https://deb.torproject.org/torproject.org\ $DISTRO\ main
+deb\-src\ https://deb.torproject.org/torproject.org\ $DISTRO\ main
+\f[]
+.fi
+.PP
+También es necesario añadir la clave pública del proyecto \f[B]Tor\f[]
+para comprobar la integridad y origen de las descargas
+.IP
+.nf
+\f[C]
+gpg\ \-\-keyserver\ keys.gnupg.net\ \-\-recv\ A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89
+gpg\ \-\-export\ A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89\ |\ sudo\ apt\-key\ add\ \-
+\f[]
+.fi
+.PP
+Actualizamos e instalamos el paquete tor
+.IP
+.nf
+\f[C]
+sudo\ apt\ update
+sudo\ apt\ install\ tor
+\f[]
+.fi
+.SS Configuración Tor
+.PP
+Para activar el servidor debemos configurar comando de ejecución de
+\f[B]Tor\f[]
+.IP
+.nf
+\f[C]
+sudo\ $EDITOR\ /etc/tor/torrc
+\f[]
+.fi
+.PP
+al que añadimos o descomentamos la siguientes órdenes
+.IP
+.nf
+\f[C]
+HiddenServiceDir\ /home/www\-data/hidden_service/
+HiddenServicePort\ 80\ 127.0.0.1:80
+HiddenServiceVersion\ 3
+\f[]
+.fi
+.PP
+HiddenServiceDir se refiere al directorio que vamos a publicar a través
+de \f[B]Tor\f[].
+En este caso se ha elegido un directorio del usuario encargado de Nginx.
+HiddenServicePort siempre debe apuntar a localhost ya que \f[B]Tor\f[]
+actúa como proxy.
+La última clave activa las nuevas direcciones de \f[B]Tor\f[] basadas en
+SHA3/ed25519/curve25519 con 56 caracteres de longitud, que todavía no
+son demasiado populares a pesar de haberse implantado hace ya un año.
+.PP
+A continuación, reiniciamos tor para que genere la dirección del onion
+service, que aparecerá en el archivo
+\f[I]/home/www\-data/hidden_service/hostname\f[]
+.IP
+.nf
+\f[C]
+sudo\ restart\ tor
+\f[]
+.fi
+.SS Configuración Nginx
+.PP
+Se procede a configurar un servidor de \f[B]Nginx\f[] de la forma
+habitual, creando el archivo en \f[I]/etc/nginx/sites\-enabled/\f[] o en
+\f[I]/etc/nginx/sites\-available/\f[] vinculándolo a aquel.
+.IP
+.nf
+\f[C]
+sudo\ $EDITOR\ /etc/nginx/sites\-enabled/lunaticgeek
+\f[]
+.fi
+.PP
+Una configuración básica para una web estática sería como la siguiente
+.IP
+.nf
+\f[C]
+server\ {
+\ \ \ \ listen\ 127.0.0.1:80;
+\ \ \ \ server_name\ mdoovnnifyqyl6jmgdibrsbq6tpk22npjhntsjkwvh7syrxgepxdejad.onion;
+
+\ \ \ \ root\ /usr/share/nginx/lunaticgeek;
+\ \ \ \ index\ index.html;
+
+\ \ \ \ access_log\ /var/log/nginx/lunaticgeek_access.log;
+\ \ \ \ error_log\ /var/log/nginx/lunaticgeek_error.log\ info;
+
+\ \ \ \ charset\ UTF\-8;
+
+\ \ \ \ server_tokens\ off;
+
+\ \ \ \ location\ /\ {
+\ \ \ \ \ \ \ \ autoindex\ off;
+\ \ \ \ \ \ \ \ try_files\ $uri\ $uri/\ =404;
+\ \ \ \ }
+}
+\f[]
+.fi
+.PP
+Por último solo necesitamos reiniciar \f[B]Nginx\f[] para poder acceder
+a nuestro blog a través de \f[B]Tor\f[]
+.IP
+.nf
+\f[C]
+service\ restart\ nginx
+\f[]
+.fi
+.SH AUTOR
+.PP
+edkalrio <edkalrio@lunaticgeek.com>
+.SH VÉASE TAMBIÉN
+.PP
+\f[B]tor(1)\f[], \f[B]nginx(1)\f[],
+<https://www.torproject.org/docs/debian.html.en>,
+<https://www.torproject.org/docs/tor-onion-service>,
+<https://trac.torproject.org/projects/tor/wiki/doc/NextGenOnions>
